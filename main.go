@@ -60,6 +60,38 @@ func main() {
 		fmt.Fprintf(w, "User registered successfully")
 	})
 
+	http.HandleFunc("/api/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Only POST requests are allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var credentials struct {
+			Username string `json:"username"`
+			Password string `json:"password"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&credentials)
+		if err != nil {
+			http.Error(w, "Error decoding request body", http.StatusBadRequest)
+			return
+		}
+
+		authenticated, err := loginUser(client, credentials.Username, credentials.Password)
+		if err != nil {
+			log.Printf("Login failed for user %v: %v\n", credentials.Username, err)
+			http.Error(w, "Login failed", http.StatusInternalServerError)
+			return
+		}
+
+		if !authenticated {
+			http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "Login successful")
+	})
+
 	fmt.Println("Starting server at port 8080...")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal("Error starting server:", err)
